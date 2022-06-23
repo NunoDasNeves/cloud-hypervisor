@@ -800,11 +800,11 @@ impl vm::Vm for MshvVm {
     ///
     /// Registers an event that will, when signaled, trigger the `gsi` IRQ.
     ///
-    fn register_irqfd(&self, fd: &EventFd, gsi: u32) -> vm::Result<()> {
+    fn register_irqfd(&self, fd: &EventFd, resamplefd: Option<&EventFd>, gsi: u32) -> vm::Result<()> {
         debug!("register_irqfd fd {} gsi {}", fd.as_raw_fd(), gsi);
 
         self.fd
-            .register_irqfd(fd, gsi)
+            .register_irqfd(fd, resamplefd, gsi)
             .map_err(|e| vm::HypervisorVmError::RegisterIrqFd(e.into()))?;
 
         Ok(())
