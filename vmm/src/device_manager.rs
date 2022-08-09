@@ -1378,6 +1378,11 @@ impl DeviceManager {
         self.interrupt_controller = Some(interrupt_controller.clone());
 
         self.address_manager
+            .allocator
+            .lock()
+            .unwrap()
+            .allocate_addresses(Some(IOAPIC_START), IOAPIC_SIZE, None);
+        self.address_manager
             .mmio_bus
             .insert(interrupt_controller.clone(), IOAPIC_START.0, IOAPIC_SIZE)
             .map_err(DeviceManagerError::BusError)?;
@@ -1627,6 +1632,11 @@ impl DeviceManager {
         let addr = arch::layout::LEGACY_RTC_MAPPED_IO_START;
 
         self.address_manager
+            .allocator
+            .lock()
+            .unwrap()
+            .allocate_addresses(Some(addr), MMIO_LEN, None);
+        self.address_manager
             .mmio_bus
             .insert(rtc_device, addr.0, MMIO_LEN)
             .map_err(DeviceManagerError::BusError)?;
@@ -1666,6 +1676,11 @@ impl DeviceManager {
 
         let addr = arch::layout::LEGACY_GPIO_MAPPED_IO_START;
 
+        self.address_manager
+            .allocator
+            .lock()
+            .unwrap()
+            .allocate_addresses(Some(addr), MMIO_LEN, None);
         self.address_manager
             .mmio_bus
             .insert(gpio_device.clone(), addr.0, MMIO_LEN)
@@ -1805,6 +1820,11 @@ impl DeviceManager {
 
         let addr = arch::layout::LEGACY_SERIAL_MAPPED_IO_START;
 
+        self.address_manager
+            .allocator
+            .lock()
+            .unwrap()
+            .allocate_addresses(Some(addr), MMIO_LEN, None);
         self.address_manager
             .mmio_bus
             .insert(serial.clone(), addr.0, MMIO_LEN)
