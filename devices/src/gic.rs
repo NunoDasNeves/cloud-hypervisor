@@ -13,7 +13,6 @@ use vm_device::interrupt::{
     InterruptIndex, InterruptManager, InterruptSourceConfig, InterruptSourceGroup,
     LegacyIrqSourceConfig, MsiIrqGroupConfig,
 };
-use vm_memory::Address;
 use vm_migration::{Migratable, MigratableError, Pausable, Snapshot, Snapshottable, Transportable};
 use vmm_sys_util::eventfd::EventFd;
 
@@ -56,15 +55,20 @@ impl Gic {
         &mut self,
         vm: &Arc<dyn hypervisor::Vm>,
         vcpu_count: u64,
+        dist_addr: u64,
+        dist_size: u64,
+        redist_size: u64,
+        msi_size: u64,
+        nr_irqs: u32,
     ) -> Result<Arc<Mutex<dyn Vgic>>> {
         let vgic = vm
             .create_vgic(
                 vcpu_count,
-                layout::GIC_V3_DIST_START.raw_value(),
-                layout::GIC_V3_DIST_SIZE,
-                layout::GIC_V3_REDIST_SIZE,
-                layout::GIC_V3_ITS_SIZE,
-                layout::IRQ_NUM,
+                dist_addr,
+                dist_size,
+                redist_size,
+                msi_size,
+                nr_irqs,
             )
             .map_err(Error::CreateGic)?;
         self.vgic = Some(vgic.clone());

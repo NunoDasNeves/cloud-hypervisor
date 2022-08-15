@@ -40,6 +40,10 @@ use anyhow::anyhow;
 use arch::get_host_cpu_phys_bits;
 #[cfg(target_arch = "x86_64")]
 use arch::layout::{KVM_IDENTITY_MAP_START, KVM_TSS_START};
+#[cfg(target_arch = "aarch64")]
+use arch::layout;
+#[cfg(target_arch = "aarch64")]
+use vm_memory::Address;
 #[cfg(feature = "tdx")]
 use arch::x86_64::tdx::TdvfSection;
 use arch::EntryPoint;
@@ -1213,6 +1217,11 @@ impl Vm {
             .create_vgic(
                 &self.memory_manager.lock().as_ref().unwrap().vm,
                 self.cpu_manager.lock().unwrap().boot_vcpus() as u64,
+                layout::GIC_V3_DIST_START.raw_value(),
+                layout::GIC_V3_DIST_SIZE,
+                layout::GIC_V3_REDIST_SIZE,
+                layout::GIC_V3_ITS_SIZE,
+                layout::IRQ_NUM,
             )
             .map_err(|_| {
                 Error::ConfigureSystem(arch::Error::PlatformSpecific(
@@ -2261,7 +2270,15 @@ impl Vm {
             .unwrap()
             .lock()
             .unwrap()
-            .create_vgic(&self.vm, vcpu_numbers.try_into().unwrap())
+            .create_vgic(
+                &self.vm,
+                vcpu_numbers.try_into().unwrap(),
+                layout::GIC_V3_DIST_START.raw_value(),
+                layout::GIC_V3_DIST_SIZE,
+                layout::GIC_V3_REDIST_SIZE,
+                layout::GIC_V3_ITS_SIZE,
+                layout::IRQ_NUM,
+            )
             .map_err(|e| MigratableError::Restore(anyhow!("Could not create GIC: {:#?}", e)))?;
 
         // PMU interrupt sticks to PPI, so need to be added by 16 to get real irq number.
