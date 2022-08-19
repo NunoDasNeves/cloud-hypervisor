@@ -81,6 +81,79 @@ pub fn configure_vcpu(
     Ok(mpidr)
 }
 
+use crate::ArchMemoryRegions;
+
+impl ArchMemoryRegions {
+    pub fn new(size: GuestUsize, mmio_address_space_size: u64) -> Self {
+        let start_of_platform_device_area =
+            GuestAddress(mmio_address_space_size - PLATFORM_DEVICE_AREA_SIZE);
+        let ram_32bit_space_size =
+            layout::MEM_32BIT_RESERVED_START.unchecked_offset_from(layout::RAM_START);
+        let mut ram = Vec::new();
+
+        // RAM space
+        // Case1: guest memory fits before the gap
+        if size <= ram_32bit_space_size {
+            ram.push((layout::RAM_START, size as usize, RegionType::Ram));
+        // Case2: guest memory extends beyond the gap
+        } else {
+            // Push memory before the gap
+            ram.push((
+                layout::RAM_START,
+                ram_32bit_space_size as usize,
+            ));
+            // Other memory is placed after 4GiB
+            ram.push((
+                layout::RAM_64BIT_START,
+                (size - ram_32bit_space_size) as usize,
+            ));
+        }
+        ArchMemoryRegions {
+            uefi:
+                Some((
+                    layout::UEFI_START,
+                    layout::UEFI_SIZE,
+                )),
+            gic_dist:
+                Some((
+                    layout::GIC_V3_DIST_START,
+                    layout::GIC_V3_DIST_SIZE,
+                )),
+            gic_dist:
+                Some((
+                    layout::GIC_V3_DIST_START,
+                    layout::GIC_V3_DIST_SIZE,
+                )),
+            gic_dist:
+                Some((
+                    layout::GIC_V3_DIST_START,
+                    layout::GIC_V3_DIST_SIZE,
+                )),
+            mem_32bit_devices:
+                Some((
+                    layout::MEM_32BIT_DEVICES_START,
+                    layout::MEM_32BIT_DEVICES_SIZE,
+                )),
+            pci_mmconfig:
+                Some((
+                    layout::PCI_MMCONFIG_START,
+                    layout::PCI_MMCONFIG_SIZE,
+                )),
+            ram,
+            mem_32bit_reserved:
+                Some((
+                    layout::MEM_32BIT_RESERVED_START,
+                    layout::MEM_32BIT_RESERVED_SIZE,
+                )),
+            platform_device_area:
+                Some((
+                    start_of_platform_device_area,
+                    PLATFORM_DEVICE_AREA_SIZE,
+                )),
+        }
+    }
+}
+
 pub fn arch_memory_regions(size: GuestUsize) -> Vec<(GuestAddress, usize, RegionType)> {
     let mut regions = vec![
         // 0 MiB ~ 256 MiB: UEFI, GIC and legacy devices
