@@ -132,3 +132,87 @@ pub const IRQ_BASE: u32 = 32;
 
 /// Number of supported interrupts
 pub const IRQ_NUM: u32 = 256;
+
+#[allow(non_camel_case_types)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum RegionName {
+    UEFI,
+    GIC_V3_ITS,
+    GIC_V3_REDIST,
+    GIC_V3_DIST,
+    LEGACY_SERIAL_MAPPED_IO,
+    LEGACY_RTC_MAPPED_IO,
+    LEGACY_GPIO_MAPPED_IO,
+    MEM_PCI_IO,
+    MEM_32BIT_DEVICES,
+    PCI_MMCONFIG,
+    RAM,
+    MEM_32BIT_RESERVED,
+    RAM_64BIT,
+    PLATFORM_DEVICES,
+}
+
+use std::collections::BTreeMap;
+use vm_memory::Address;
+use vm_memory::GuestUsize;
+
+pub fn arch_memory_regions(
+    ram_size: GuestUsize,
+    vcpus: u64,
+) -> BTreeMap<RegionName, (GuestAddress, GuestUsize)> {
+    use RegionName::*;
+    let mut regions = BTreeMap::<RegionName, (GuestAddress, GuestUsize)>::new();
+
+    regions.insert(UEFI, (UEFI_START, UEFI_SIZE));
+
+    // GIC
+    let gic_redists_size = vcpus * GIC_V3_REDIST_SIZE;
+    let gic_redist_start = GuestAddress(GIC_V3_DIST_START.0 - gic_redists_size);
+    let gic_its_start = GuestAddress(gic_redist_start.0 - GIC_V3_ITS_SIZE);
+
+    regions.insert(GIC_V3_DIST, (GIC_V3_DIST_START, GIC_V3_DIST_SIZE));
+    regions.insert(GIC_V3_REDIST, (gic_redist_start, gic_redists_size));
+    regions.insert(GIC_V3_ITS, (gic_its_start, GIC_V3_ITS_SIZE));
+
+    // Legacy MMIO
+    regions.insert(
+        LEGACY_SERIAL_MAPPED_IO,
+        (LEGACY_SERIAL_MAPPED_IO_START, 0x1000),
+    );
+    regions.insert(LEGACY_RTC_MAPPED_IO, (LEGACY_RTC_MAPPED_IO_START, 0x1000));
+    regions.insert(LEGACY_GPIO_MAPPED_IO, (LEGACY_GPIO_MAPPED_IO_START, 0x1000));
+
+    // PCI
+    regions.insert(MEM_PCI_IO, (MEM_PCI_IO_START, MEM_PCI_IO_SIZE));
+    regions.insert(
+        MEM_32BIT_DEVICES,
+        (MEM_32BIT_DEVICES_START, MEM_32BIT_DEVICES_SIZE),
+    );
+    regions.insert(PCI_MMCONFIG, (PCI_MMCONFIG_START, PCI_MMCONFIG_SIZE));
+
+    // RAM space
+    let ram_32bit_space_size = MEM_32BIT_RESERVED_START.unchecked_offset_from(RAM_START);
+
+    // Case1: guest memory fits before the gap
+    if ram_size <= ram_32bit_space_size {
+        regions.insert(RAM, (RAM_START, ram_size));
+    // Case2: guest memory extends beyond the gap
+    } else {
+        // Push memory before the gap
+        regions.insert(RAM, (RAM_START, ram_32bit_space_size));
+        // Other memory is placed after 4GiB
+        regions.insert(
+            RAM_64BIT,
+            (RAM_64BIT_START, (ram_size - ram_32bit_space_size)),
+        );
+    }
+
+    regions.insert(
+        PCI_MMCONFIG,
+        (MEM_32BIT_RESERVED_START, MEM_32BIT_RESERVED_SIZE),
+    );
+
+    // MemoryManager will add the PLATFORM_DEVICES region
+
+    regions
+}
