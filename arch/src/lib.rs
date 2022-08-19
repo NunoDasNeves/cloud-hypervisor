@@ -180,3 +180,26 @@ impl DeviceInfoForFdt for MmioDeviceInfo {
         self.len
     }
 }
+
+use vm_memory::{ GuestAddress, GuestUsize };
+
+pub struct ArchMemoryRegions {
+    ram: Vec<(GuestAddress, GuestUsize)>,
+    mem_32bit_reserved: Option<(GuestAddress, GuestUsize)>,
+    mem_32bit_devices: Option<(GuestAddress, GuestUsize)>,
+    platform_mmio: Option<(GuestAddress, GuestUsize)>,
+    #[cfg(target_arch = "aarch64")]
+    uefi: Option<(GuestAddress, GuestUsize)>,
+    #[cfg(target_arch = "aarch64")]
+    gic_dist: (GuestAddress, GuestUsize),
+    #[cfg(target_arch = "aarch64")]
+    gic_redist: (GuestAddress, GuestUsize),
+    #[cfg(target_arch = "aarch64")]
+    gic_msi: (GuestAddress, GuestUsize),
+    #[cfg(target_arch = "aarch64")]
+    kernel_start: GuestAddress,
+    #[cfg(target_arch = "aarch64")]
+    fdt_start: GuestAddress,
+    #[cfg(all(target_arch = "aarch64", feature = "acpi"))]
+    acpi_start: GuestAddress,
+}

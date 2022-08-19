@@ -755,6 +755,54 @@ pub fn configure_vcpu(
     Ok(())
 }
 
+use crate::ArchMemoryRegions;
+
+impl ArchMemoryRegions {
+    pub fn new(size: GuestUsize, mmio_address_space_size: u64) -> Self {
+        let reserved_memory_gap_start = layout::MEM_32BIT_RESERVED_START
+            .checked_add(layout::MEM_32BIT_DEVICES_SIZE)
+            .expect("32-bit reserved region is too large");
+        let requested_memory_size = GuestAddress(size as u64);
+        let mut ram = Vec::new();
+        let start_of_platform_device_area =
+            GuestAddress(mmio_address_space_size - PLATFORM_DEVICE_AREA_SIZE);
+        let end_of_device_area = start_of_platform_device_area.unchecked_sub(1);
+        // case1: guest memory fits before the gap
+        if size as u64 <= layout::MEM_32BIT_RESERVED_START.raw_value() {
+            ram.push((GuestAddress(0), size));
+        // case2: guest memory extends beyond the gap
+        } else {
+            // push memory before the gap
+            ram.push((
+                GuestAddress(0),
+                layout::MEM_32BIT_RESERVED_START.raw_value(),
+            ));
+            ram.push((
+                layout::RAM_64BIT_START,
+                requested_memory_size.unchecked_offset_from(layout::MEM_32BIT_RESERVED_START),
+            ));
+        }
+        ArchMemoryRegions {
+            ram,
+            mem_32bit_devices:
+                Some((
+                    layout::MEM_32BIT_RESERVED_START,
+                    layout::MEM_32BIT_DEVICES_SIZE,
+                )),
+            mem_32bit_reserved:
+                Some((
+                    reserved_memory_gap_start,
+                    (layout::MEM_32BIT_RESERVED_SIZE - layout::MEM_32BIT_DEVICES_SIZE),
+                )),
+            platform_mmio:
+                Some((
+                    GuestAddress(30),
+                    30,
+                )),
+        }
+    }
+}
+
 /// Returns a Vec of the valid memory addresses.
 /// These should be used to configure the GuestMemory structure for the platform.
 /// For x86_64 all addresses are valid from the start of the kernel except a
