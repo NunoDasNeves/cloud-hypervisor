@@ -133,8 +133,13 @@ pub const IRQ_BASE: u32 = 32;
 /// Number of supported interrupts
 pub const IRQ_NUM: u32 = 256;
 
+
+use versionize::{VersionMap, Versionize, VersionizeResult, VersionizeError};
+use versionize_derive::Versionize;
+use serde::{Serialize, Deserialize};
+
 #[allow(non_camel_case_types)]
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Serialize, Deserialize, Versionize)]
 pub enum RegionName {
     UEFI,
     GIC_V3_ITS,
@@ -155,6 +160,17 @@ pub enum RegionName {
 use std::collections::BTreeMap;
 use vm_memory::Address;
 use vm_memory::GuestUsize;
+use crate::ArchMemRegion;
+
+pub fn arch_memory_regions_from_vec(
+    v: &Vec<ArchMemRegion>
+) -> BTreeMap<RegionName, (GuestAddress, GuestUsize)> {
+    let mut regions = BTreeMap::<RegionName, (GuestAddress, GuestUsize)>::new();
+    for region in v.iter() {
+        regions.insert(region.name, (GuestAddress(region.base), region.size));
+    }
+    regions
+}
 
 pub fn arch_memory_regions(
     ram_size: GuestUsize,

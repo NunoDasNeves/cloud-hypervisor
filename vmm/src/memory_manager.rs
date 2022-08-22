@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 //
+use std::collections::BTreeMap;
 #[cfg(target_arch = "x86_64")]
 use crate::config::SgxEpcConfig;
 use crate::config::{HotplugMethod, MemoryConfig, MemoryZoneConfig};
@@ -16,7 +17,8 @@ use acpi_tables::{aml, aml::Aml};
 use anyhow::anyhow;
 #[cfg(target_arch = "x86_64")]
 use arch::x86_64::{SgxEpcRegion, SgxEpcSection};
-use arch::{layout, RegionType};
+use arch::{layout, ArchMemRegion};
+use arch::layout::RegionName;
 #[cfg(target_arch = "x86_64")]
 use devices::ioapic;
 #[cfg(target_arch = "x86_64")]
@@ -142,13 +144,6 @@ struct GuestRamMapping {
     file_offset: u64,
 }
 
-#[derive(Clone, Serialize, Deserialize, Versionize)]
-struct ArchMemRegion {
-    base: u64,
-    size: usize,
-    r_type: RegionType,
-}
-
 pub struct MemoryManager {
     boot_guest_memory: GuestMemoryMmap,
     guest_memory: GuestMemoryAtomic<GuestMemoryMmap>,
@@ -175,7 +170,7 @@ pub struct MemoryManager {
     snapshot_memory_ranges: MemoryRangeTable,
     memory_zones: MemoryZones,
     log_dirty: bool, // Enable dirty logging for created RAM regions
-    arch_mem_regions: Vec<ArchMemRegion>,
+    arch_mem_regions: BTreeMap<RegionName, (GuestAddress, GuestUsize)>,
     ram_allocator: AddressAllocator,
     dynamic: bool,
 
@@ -806,22 +801,6 @@ impl MemoryManager {
             }
         }
 
-        // Allocate SubRegion and Reserved address ranges.
-        for region in self.arch_mem_regions.iter() {
-            if region.r_type == RegionType::Ram {
-                // Ignore the RAM type since ranges have already been allocated
-                // based on the GuestMemory regions.
-                continue;
-            }
-            self.ram_allocator
-                .allocate(
-                    Some(GuestAddress(region.base)),
-                    region.size as GuestUsize,
-                    None,
-                )
-                .ok_or(Error::MemoryRangeAllocation)?;
-        }
-
         Ok(())
     }
 
@@ -835,6 +814,7 @@ impl MemoryManager {
         restore_data: Option<&MemoryManagerSnapshotData>,
         existing_memory_files: Option<HashMap<u32, File>>,
         #[cfg(target_arch = "x86_64")] sgx_epc_config: Option<Vec<SgxEpcConfig>>,
+        vcpus: u64,
     ) -> Result<Arc<Mutex<MemoryManager>>, Error> {
         let user_provided_zones = config.size == 0;
 
@@ -876,7 +856,7 @@ impl MemoryManager {
                 GuestAddress(data.start_of_device_area),
                 data.boot_ram,
                 data.current_ram,
-                data.arch_mem_regions.clone(),
+                layout::arch_memory_regions_from_vec(&data.arch_mem_regions),
                 memory_zones,
                 guest_memory,
                 boot_guest_memory,
@@ -887,21 +867,21 @@ impl MemoryManager {
             )
         } else {
             // Init guest memory
-            let arch_mem_regions = arch::arch_memory_regions(ram_size);
+            let mut arch_mem_regions = layout::arch_memory_regions(ram_size, vcpus);
 
-            let ram_regions: Vec<(GuestAddress, usize)> = arch_mem_regions
-                .iter()
-                .filter(|r| r.2 == RegionType::Ram)
-                .map(|r| (r.0, r.1))
-                .collect();
+            arch_mem_regions.insert(
+                RegionName::PLATFORM_DEVICES,
+                (start_of_platform_device_area, PLATFORM_DEVICE_AREA_SIZE)
+            );
 
-            let arch_mem_regions: Vec<ArchMemRegion> = arch_mem_regions
-                .iter()
-                .map(|(a, b, c)| ArchMemRegion {
-                    base: a.0,
-                    size: *b,
-                    r_type: *c,
-                })
+            let mut ram_regions = vec![
+                arch_mem_regions.get(&RegionName::RAM).unwrap()
+            ];
+            if let Some(r) = arch_mem_regions.get(&RegionName::RAM_64BIT) {
+                ram_regions.push(r);
+            }
+            let ram_regions: Vec<(GuestAddress, usize)> = ram_regions.iter()
+                .map(|r| (r.0, r.1 as usize))
                 .collect();
 
             let (mem_regions, mut memory_zones) =
@@ -1000,6 +980,8 @@ impl MemoryManager {
         };
 
         let guest_memory = GuestMemoryAtomic::new(guest_memory);
+        let (mmio_hole_start, mmio_hole_size) =
+            arch_mem_regions.get(&RegionName::MEM_32BIT_DEVICES).unwrap();
 
         // Both MMIO and PIO address spaces start at address 0.
         let allocator = Arc::new(Mutex::new(
@@ -1014,8 +996,8 @@ impl MemoryManager {
                 },
                 start_of_platform_device_area,
                 PLATFORM_DEVICE_AREA_SIZE,
-                layout::MEM_32BIT_DEVICES_START,
-                layout::MEM_32BIT_DEVICES_SIZE,
+                *mmio_hole_start,
+                *mmio_hole_size,
                 #[cfg(target_arch = "x86_64")]
                 vec![GsiApic::new(
                     X86_64_IRQ_BASE,
@@ -1099,6 +1081,7 @@ impl MemoryManager {
         source_url: Option<&str>,
         prefault: bool,
         phys_bits: u8,
+        vcpus: u64,
     ) -> Result<Arc<Mutex<MemoryManager>>, Error> {
         if let Some(source_url) = source_url {
             let mut memory_file_path = url_to_path(source_url).map_err(Error::Restore)?;
@@ -1119,6 +1102,7 @@ impl MemoryManager {
                 None,
                 #[cfg(target_arch = "x86_64")]
                 None,
+                vcpus,
             )?;
 
             mm.lock()
@@ -1819,13 +1803,21 @@ impl MemoryManager {
     }
 
     pub fn snapshot_data(&self) -> MemoryManagerSnapshotData {
+        let mut arch_mem_regions_vec = vec![];
+        for (name, (base, size)) in self.arch_mem_regions.iter() {
+            arch_mem_regions_vec.push(ArchMemRegion {
+                name: *name,
+                base: base.0,
+                size: *size
+            });
+        }
         MemoryManagerSnapshotData {
             memory_ranges: self.snapshot_memory_ranges.clone(),
             guest_ram_mappings: self.guest_ram_mappings.clone(),
             start_of_device_area: self.start_of_device_area.0,
             boot_ram: self.boot_ram,
             current_ram: self.current_ram,
-            arch_mem_regions: self.arch_mem_regions.clone(),
+            arch_mem_regions: arch_mem_regions_vec,
             hotplug_slots: self.hotplug_slots.clone(),
             next_memory_slot: self.next_memory_slot,
             selected_slot: self.selected_slot,

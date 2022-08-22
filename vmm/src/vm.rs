@@ -766,6 +766,7 @@ impl Vm {
             None,
             #[cfg(target_arch = "x86_64")]
             sgx_epc_config,
+            config.lock().unwrap().cpus.boot_vcpus as u64,
         )
         .map_err(Error::MemoryManager)?;
 
@@ -832,6 +833,7 @@ impl Vm {
                 source_url,
                 prefault,
                 phys_bits,
+                vm_config.lock().unwrap().cpus.boot_vcpus as u64,
             )
             .map_err(Error::MemoryManager)?
         } else {
@@ -894,6 +896,7 @@ impl Vm {
             existing_memory_files,
             #[cfg(target_arch = "x86_64")]
             None,
+            config.lock().unwrap().cpus.boot_vcpus as u64,
         )
         .map_err(Error::MemoryManager)?;
 

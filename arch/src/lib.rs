@@ -53,6 +53,13 @@ pub enum Error {
 /// Type for returning public functions outcome.
 pub type Result<T> = result::Result<T, Error>;
 
+#[derive(Clone, Serialize, Deserialize, Versionize)]
+pub struct ArchMemRegion {
+    pub name: layout::RegionName,
+    pub base: u64,
+    pub size: u64,
+}
+
 /// Type for memory region types.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize, Versionize)]
 pub enum RegionType {
