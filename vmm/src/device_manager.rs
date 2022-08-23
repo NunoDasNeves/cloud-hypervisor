@@ -1688,9 +1688,10 @@ impl DeviceManager {
         // On AArch64, the UEFI binary requires a flash device at address 0.
         // 4 MiB memory is mapped to simulate the flash.
         let uefi_mem_slot = self.memory_manager.lock().unwrap().allocate_memory_slot();
+        let (uefi_base, uefi_size) = self.memory_manager.lock().unwrap().arch_mem_regions.get(&arch::layout::RegionName::UEFI).unwrap().clone();
         let uefi_region = GuestRegionMmap::new(
-            MmapRegion::new(arch::layout::UEFI_SIZE as usize).unwrap(),
-            arch::layout::UEFI_START,
+            MmapRegion::new(uefi_size as usize).unwrap(),
+            uefi_base,
         )
         .unwrap();
         let uefi_mem_region = self

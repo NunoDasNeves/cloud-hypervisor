@@ -55,8 +55,8 @@ use vm_memory::GuestAddress;
 
 /// 0x0 ~ 0x40_0000 (4 MiB) is reserved to UEFI
 /// UEFI binary size is required less than 3 MiB, reserving 4 MiB is enough.
-pub const UEFI_START: GuestAddress = GuestAddress(0);
-pub const UEFI_SIZE: u64 = 0x040_0000;
+const UEFI_START: GuestAddress = GuestAddress(0);
+const UEFI_SIZE: u64 = 0x040_0000;
 
 /// Below this address will reside the GIC, above this address will reside the MMIO devices.
 const MAPPED_IO_START: GuestAddress = GuestAddress(0x0900_0000);
