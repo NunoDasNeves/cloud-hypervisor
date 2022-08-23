@@ -866,8 +866,10 @@ impl MemoryManager {
                 data.next_hotplug_slot,
             )
         } else {
+            info!("ABOUT TO CREATE ARCH MEM REGIONS");
             // Init guest memory
             let mut arch_mem_regions = layout::arch_memory_regions(ram_size, vcpus);
+            info!("DONE CREATING ARCH MEM REGIONS");
 
             arch_mem_regions.insert(
                 RegionName::PLATFORM_DEVICES,

@@ -755,6 +755,9 @@ impl Vm {
         #[cfg(target_arch = "x86_64")]
         let sgx_epc_config = config.lock().unwrap().sgx_epc.clone();
 
+
+        let num_vcpus = config.lock().unwrap().cpus.max_vcpus as u64;
+
         let memory_manager = MemoryManager::new(
             vm.clone(),
             &config.lock().unwrap().memory.clone(),
@@ -766,7 +769,7 @@ impl Vm {
             None,
             #[cfg(target_arch = "x86_64")]
             sgx_epc_config,
-            config.lock().unwrap().cpus.boot_vcpus as u64,
+            num_vcpus,
         )
         .map_err(Error::MemoryManager)?;
 
@@ -826,6 +829,7 @@ impl Vm {
             snapshot.snapshots.get(MEMORY_MANAGER_SNAPSHOT_ID)
         {
             let phys_bits = physical_bits(vm_config.lock().unwrap().cpus.max_phys_bits);
+            let num_vcpus = vm_config.lock().unwrap().cpus.max_vcpus as u64;
             MemoryManager::new_from_snapshot(
                 memory_manager_snapshot,
                 vm.clone(),
@@ -833,7 +837,7 @@ impl Vm {
                 source_url,
                 prefault,
                 phys_bits,
-                vm_config.lock().unwrap().cpus.boot_vcpus as u64,
+                num_vcpus,
             )
             .map_err(Error::MemoryManager)?
         } else {
@@ -884,6 +888,7 @@ impl Vm {
         }
 
         let phys_bits = physical_bits(config.lock().unwrap().cpus.max_phys_bits);
+        let num_vcpus = config.lock().unwrap().cpus.max_vcpus as u64;
 
         let memory_manager = MemoryManager::new(
             vm.clone(),
@@ -896,7 +901,7 @@ impl Vm {
             existing_memory_files,
             #[cfg(target_arch = "x86_64")]
             None,
-            config.lock().unwrap().cpus.boot_vcpus as u64,
+            num_vcpus,
         )
         .map_err(Error::MemoryManager)?;
 
