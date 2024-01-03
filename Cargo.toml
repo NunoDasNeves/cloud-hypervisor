@@ -50,6 +50,13 @@ vmm = { path = "vmm" }
 vmm-sys-util = "0.12.1"
 zbus = { version = "3.15.2", optional = true }
 
+[patch."https://github.com/rust-vmm/mshv"]
+mshv-bindings = { path = "../mshv/mshv-bindings", optional = true }
+mshv-ioctls = { path = "../mshv/mshv-ioctls", optional = true}
+
+[patch."https://github.com/rust-vmm/vfio"]
+vfio-ioctls = { path = "../vfio/crates/vfio-ioctls" }
+
 [dev-dependencies]
 dirs = "5.0.1"
 net_util = { path = "net_util" }
