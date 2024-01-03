@@ -50,6 +50,17 @@ vmm-sys-util = "0.12.1"
 vm-memory = "0.14.1"
 zbus = { version = "3.15.2", optional = true }
 
+# List of patched crates
+[patch.crates-io]
+kvm-bindings = { git = "https://github.com/cloud-hypervisor/kvm-bindings", branch = "ch-v0.7.0" }
+
+[patch."https://github.com/rust-vmm/mshv"]
+mshv-bindings = { path = "../mshv/mshv-bindings", optional = true }
+mshv-ioctls = { path = "../mshv/mshv-ioctls", optional = true}
+
+[patch."https://github.com/rust-vmm/vfio"]
+vfio-ioctls = { path = "../vfio/crates/vfio-ioctls" }
+
 [dev-dependencies]
 dirs = "5.0.1"
 net_util = { path = "net_util" }
