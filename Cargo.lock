@@ -1206,9 +1206,9 @@ checksum = "9bec4598fddb13cc7b528819e697852653252b760f1228b7642679bf2ff2cd07"
 
 [[package]]
 name = "mshv-bindings"
-version = "0.5.1"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "909de5fd4a5a3347a6c62872f6816e6279efd8615a753f10a3bc4daaef8a72ef"
+checksum = "07f94f542c738f19317363222a7f415588c04cda964882479af41948ac3c3647"
 dependencies = [
  "libc",
  "num_enum",
@@ -1220,9 +1220,9 @@ dependencies = [
 
 [[package]]
 name = "mshv-ioctls"
-version = "0.5.1"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c7d94972588d562bd349b916de6a43f2ee268e6e9c91cfb5b30549ed4ea2751"
+checksum = "8a6df0848f14eb69505a28673f94acdd830cf248fb57022b21f24e242b702e66"
 dependencies = [
  "libc",
  "mshv-bindings",
@@ -2211,16 +2211,16 @@ checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
 
 [[package]]
 name = "vfio-bindings"
-version = "0.4.0"
-source = "git+https://github.com/rust-vmm/vfio?branch=main#3d158a14460cac7ca3c99c2effa0a46880935cb0"
+version = "0.5.0"
+source = "git+https://github.com/NunoDasNeves/vfio?branch=nudasnev%2Fuse-mshv-v0.5.2#d8ecbb38f9a5d4338275b04a30f604e41a897a4e"
 dependencies = [
  "vmm-sys-util",
 ]
 
 [[package]]
 name = "vfio-ioctls"
-version = "0.4.0"
-source = "git+https://github.com/rust-vmm/vfio?branch=main#3d158a14460cac7ca3c99c2effa0a46880935cb0"
+version = "0.5.0"
+source = "git+https://github.com/NunoDasNeves/vfio?branch=nudasnev%2Fuse-mshv-v0.5.2#d8ecbb38f9a5d4338275b04a30f604e41a897a4e"
 dependencies = [
  "byteorder",
  "kvm-bindings",
@@ -2229,7 +2229,7 @@ dependencies = [
  "log",
  "mshv-bindings",
  "mshv-ioctls",
- "thiserror 1.0.62",
+ "thiserror 2.0.12",
  "vfio-bindings",
  "vm-memory",
  "vmm-sys-util",
@@ -2238,15 +2238,15 @@ dependencies = [
 [[package]]
 name = "vfio_user"
 version = "0.1.0"
-source = "git+https://github.com/rust-vmm/vfio-user?branch=main#3febcdd3fa2531623865663ca1721e1962ed9979"
+source = "git+https://github.com/NunoDasNeves/vfio?branch=nudasnev%2Fuse-mshv-v0.5.2#d8ecbb38f9a5d4338275b04a30f604e41a897a4e"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.9.0",
  "libc",
  "log",
  "serde",
  "serde_derive",
  "serde_json",
- "thiserror 1.0.62",
+ "thiserror 2.0.12",
  "vfio-bindings",
  "vm-memory",
  "vmm-sys-util",
